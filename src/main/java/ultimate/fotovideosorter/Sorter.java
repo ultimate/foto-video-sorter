@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 final class Sorter
@@ -75,8 +76,8 @@ final class Sorter
 		}
 		Collections.sort(files);
 		System.out.println("[" + profile.name + "] Scan complete: " + files.size() + " file(s) found");
-		Set<String> includes = extensions(profile.include.isEmpty() ? config.include : profile.include);
-		Set<String> excludes = extensions(profile.exclude.isEmpty() ? config.exclude : profile.exclude);
+		FilterRules includes = new FilterRules(profile.include.isEmpty() ? config.include : profile.include);
+		FilterRules excludes = new FilterRules(profile.exclude.isEmpty() ? config.exclude : profile.exclude);
 		ZoneId zone = ZoneId.of(profile.timezone == null ? config.timezone : profile.timezone);
 		Duration offset = Duration.parse(profile.dateTimeOffset == null ? "PT0S" : profile.dateTimeOffset);
 		Instant cutoff = config.startDate == null ? null : Instant.parse(config.startDate);
@@ -89,7 +90,8 @@ final class Sorter
 			String relative = Config.normalizeRelative(sourceRoot.relativize(source).toString());
 			String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
 			String extension = extension(source.getFileName().toString()).toLowerCase(Locale.ROOT);
-			if((!includes.isEmpty() && !includes.contains(extension)) || excludes.contains(extension))
+			String filename = source.getFileName().toString();
+			if((!includes.isEmpty() && !includes.matches(extension, filename, relative)) || excludes.matches(extension, filename, relative))
 			{
 				s.filtered++;
 				record(profile.name, "FILTERED", source, null, logicalSource);
@@ -250,19 +252,79 @@ final class Sorter
 		}
 	}
 
-	private static Set<String> extensions(List<String> values)
+	private static final class FilterRules
 	{
-		Set<String> r = new HashSet<String>();
-		if(values != null)
-			for(String v : values)
+		private final Set<String>	extensions = new HashSet<String>();
+		private final List<Pattern>	globs = new ArrayList<Pattern>();
+
+		FilterRules(List<String> values)
+		{
+			if(values == null)
+				return;
+			for(String value : values)
 			{
-				String n = v.toLowerCase(Locale.ROOT);
-				while(n.startsWith("."))
-					n = n.substring(1);
-				if(!n.isEmpty())
-					r.add(n);
+				if(value == null || value.isEmpty())
+					continue;
+				if(isGlob(value))
+					globs.add(Pattern.compile(globRegex(value.replace('\\', '/')), Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE));
+				else
+				{
+					String extension = value.toLowerCase(Locale.ROOT);
+					while(extension.startsWith("."))
+						extension = extension.substring(1);
+					if(!extension.isEmpty())
+						extensions.add(extension);
+				}
 			}
-		return r;
+		}
+
+		boolean isEmpty()
+		{
+			return extensions.isEmpty() && globs.isEmpty();
+		}
+
+		boolean matches(String extension, String filename, String relative)
+		{
+			if(extensions.contains(extension))
+				return true;
+			for(Pattern glob : globs)
+				if(glob.matcher(filename).matches() || glob.matcher(relative).matches())
+					return true;
+			return false;
+		}
+
+		private static boolean isGlob(String value)
+		{
+			return value.indexOf('*') >= 0 || value.indexOf('?') >= 0 || value.indexOf('/') >= 0 || value.indexOf('\\') >= 0;
+		}
+
+		private static String globRegex(String glob)
+		{
+			StringBuilder regex = new StringBuilder("^");
+			for(int i = 0; i < glob.length(); i++)
+			{
+				char c = glob.charAt(i);
+				if(c == '*')
+				{
+					if(i + 1 < glob.length() && glob.charAt(i + 1) == '*')
+					{
+						regex.append(".*");
+						i++;
+					}
+					else
+						regex.append("[^/]*");
+				}
+				else if(c == '?')
+					regex.append("[^/]");
+				else
+				{
+					if("\\.[]{}()+-^$|".indexOf(c) >= 0)
+						regex.append('\\');
+					regex.append(c);
+				}
+			}
+			return regex.append('$').toString();
+		}
 	}
 
 	private static String extension(String n)

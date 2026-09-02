@@ -136,6 +136,25 @@ class SorterTest
 		}
 	}
 
+	@Test
+	void excludesFilesUsingCaseInsensitiveGlobPatterns() throws Exception
+	{
+		Fixture f = fixture();
+		f.config.exclude = Collections.singletonList(".trashed-*");
+		f.config.startDate = Instant.now().plusSeconds(3600).toString();
+		Files.write(f.source.resolve(".trashed-1766407675-IMG_20251122_134747847_HDR.jpg"), new byte[] { 1 });
+		Files.write(f.source.resolve("photo.jpg"), new byte[] { 2 });
+
+		try (AuditRepository audit = AuditRepository.memory())
+		{
+			Sorter.Summary summary = new Sorter(f.config, f.paths, audit).run(f.config.profiles, true).get(0);
+			assertEquals(2, summary.discovered);
+			assertEquals(1, summary.filtered);
+			assertEquals(1, summary.beforeCutoff);
+			assertEquals(0, summary.planned);
+		}
+	}
+
 	private Fixture fixture() throws Exception
 	{
 		Fixture f = new Fixture();

@@ -61,7 +61,7 @@ Global settings:
 | --- | --- |
 | `folderPattern` | Java date/time pattern, e.g. `yyyy/yyyy.MM.dd` |
 | `lowercaseFilename` | Lowercase the complete output filename |
-| `include`, `exclude` | Case-insensitive extension lists; dots optional |
+| `include`, `exclude` | Case-insensitive extension or glob lists; dots are optional for extensions |
 | `dateSources` | Ordered fallbacks: `CAPTURE`, `CREATED`, `MODIFIED` |
 | `timezone` | IANA zone for formatting and zone-less metadata |
 | `startDate` | Optional inclusive ISO-8601 filesystem cutoff; files are eligible when created or modified on/after it |
@@ -78,11 +78,13 @@ Profile settings:
 | `suffix` | Text inserted before the extension |
 | `timezone` | Optional global-zone override |
 | `dateTimeOffset` | ISO-8601 duration, e.g. `PT1H` or `PT-30M` |
-| `include`, `exclude` | Non-empty lists override corresponding global lists |
+| `include`, `exclude` | Non-empty extension/glob lists override corresponding global lists |
 | `recursive` | Scan nested source folders |
 | `includeByDefault` | Select with `--profiles all` |
 
 Optional profile settings may be omitted. An omitted or YAML `null` value keeps the profile default; `include`, `exclude`, and `timezone` then use the corresponding global behavior.
+
+Plain filter entries such as `jpg` or `.mp4` match file extensions. Entries containing glob syntax match filenames and profile-relative paths, case-insensitively. `*` matches within one path segment, `**` crosses folders, and `?` matches one character. For example, `exclude: [".trashed-*", "cache/**"]` excludes trashed filenames anywhere and every file below the relative `cache` folder. Exclude rules take precedence over include rules.
 
 Existing names are never overwritten. With separator `_`, the first collision for `photo.jpg` is `photo_001.jpg`.
 
