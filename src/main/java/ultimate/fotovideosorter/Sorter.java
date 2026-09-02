@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -65,38 +66,44 @@ final class Sorter
 			return s;
 		}
 		final int depth = profile.recursive ? Integer.MAX_VALUE : 1;
-		List<Path> files = new ArrayList<Path>();
-		Progress scanProgress = new Progress(profile.name, "Scanning", -1);
-		try (Stream<Path> stream = Files.walk(sourceRoot, depth))
-		{
-			stream.filter(Files::isRegularFile).forEach(file -> {
-				files.add(file);
-				scanProgress.update(files.size());
-			});
-		}
-		Collections.sort(files);
-		System.out.println("[" + profile.name + "] Scan complete: " + files.size() + " file(s) found");
 		FilterRules includes = new FilterRules(profile.include.isEmpty() ? config.include : profile.include);
 		FilterRules excludes = new FilterRules(profile.exclude.isEmpty() ? config.exclude : profile.exclude);
+		List<Path> files = new ArrayList<Path>();
+		Progress scanProgress = new Progress(profile.name, "Scanning candidates", -1);
+		try (Stream<Path> stream = Files.walk(sourceRoot, depth))
+		{
+			Iterator<Path> iterator = stream.filter(Files::isRegularFile).iterator();
+			while(iterator.hasNext())
+			{
+				Path file = iterator.next();
+				s.discovered++;
+				String relative = Config.normalizeRelative(sourceRoot.relativize(file).toString());
+				String filename = file.getFileName().toString();
+				String extension = extension(filename).toLowerCase(Locale.ROOT);
+				String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
+				if((!includes.isEmpty() && !includes.matches(extension, filename, relative)) || excludes.matches(extension, filename, relative))
+				{
+					s.filtered++;
+					record(profile.name, "FILTERED", file, null, logicalSource);
+				}
+				else
+					files.add(file);
+				scanProgress.update(files.size());
+			}
+		}
+		Collections.sort(files);
+		System.out.println("[" + profile.name + "] Scan complete: " + s.discovered + " file(s) scanned, " + files.size() + " candidate(s) after filters");
 		ZoneId zone = ZoneId.of(profile.timezone == null ? config.timezone : profile.timezone);
 		Duration offset = Duration.parse(profile.dateTimeOffset == null ? "PT0S" : profile.dateTimeOffset);
 		Instant cutoff = config.startDate == null ? null : Instant.parse(config.startDate);
 		System.out.println("[" + profile.name + "] Processing " + files.size() + " file(s)");
 		Progress processingProgress = new Progress(profile.name, "Processing", files.size());
-		for(Path source : files)
+		for(int fileIndex = 0; fileIndex < files.size(); fileIndex++)
 		{
-			s.discovered++;
-			processingProgress.update(s.discovered);
+			Path source = files.get(fileIndex);
+			processingProgress.update(fileIndex + 1);
 			String relative = Config.normalizeRelative(sourceRoot.relativize(source).toString());
 			String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
-			String extension = extension(source.getFileName().toString()).toLowerCase(Locale.ROOT);
-			String filename = source.getFileName().toString();
-			if((!includes.isEmpty() && !includes.matches(extension, filename, relative)) || excludes.matches(extension, filename, relative))
-			{
-				s.filtered++;
-				record(profile.name, "FILTERED", source, null, logicalSource);
-				continue;
-			}
 			BasicFileAttributes attrs = Files.readAttributes(source, BasicFileAttributes.class);
 			if(cutoff != null && latestFilesystemDate(attrs).isBefore(cutoff))
 			{
@@ -157,7 +164,7 @@ final class Sorter
 				System.err.println("Copy failed: " + source + " -> " + destination + ": " + e.getMessage());
 			}
 		}
-		System.out.println("[" + profile.name + "] Processing complete: " + s.discovered + " file(s)");
+		System.out.println("[" + profile.name + "] Processing complete: " + files.size() + " candidate(s)");
 		return s;
 	}
 
