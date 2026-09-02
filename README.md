@@ -3,6 +3,7 @@
 ## Requirements
 - tool in java
 - compatible with java 8 (to be able to run under java version 1.8.0_151)
+- use maven as a build tool and for dependency management 
 - runnable from the command line without ui and via cron
 - configurable via file
 - should scan folders defined in config for newly added files and copy them according to the folder config
