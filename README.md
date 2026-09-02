@@ -37,6 +37,7 @@ For each folder / profile
 - include filter (multiple values, e.g. "jpg", "mpg")
 - exclude filter (multiple values, e.g. "txt", "srt")
 - include subfolders (true/false)
+- include by default when all profiles are run (true/false)
 
 ## TBD
 - use efficient copying when file is copied from one folder of the same network device to another (e.g. run copy command on the remote machine instead of transferring the file content forth and back to the machine running the program)
