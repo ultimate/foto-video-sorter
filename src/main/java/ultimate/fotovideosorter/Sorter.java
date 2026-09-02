@@ -21,6 +21,8 @@ import java.util.stream.Stream;
 
 final class Sorter
 {
+	private static final int	PROGRESS_ITEMS		= 1000;
+	private static final long	PROGRESS_MILLIS	= 5000L;
 	private final Config			config;
 	private final PathResolver		paths;
 	private final AuditRepository	audit;
@@ -53,27 +55,37 @@ final class Sorter
 	{
 		Summary s = new Summary(profile.name);
 		Path sourceRoot = paths.resolve(profile.source);
+		System.out.println("[" + profile.name + "] Scanning " + sourceRoot.toAbsolutePath().normalize());
 		if(!Files.isDirectory(sourceRoot))
 		{
 			s.missingSource = 1;
 			record(profile.name, "MISSING_SOURCE", sourceRoot, null, "Source directory does not exist");
+			System.out.println("[" + profile.name + "] Source directory is missing; skipping profile");
 			return s;
 		}
 		final int depth = profile.recursive ? Integer.MAX_VALUE : 1;
 		List<Path> files = new ArrayList<Path>();
+		Progress scanProgress = new Progress(profile.name, "Scanning", -1);
 		try (Stream<Path> stream = Files.walk(sourceRoot, depth))
 		{
-			stream.filter(Files::isRegularFile).forEach(files::add);
+			stream.filter(Files::isRegularFile).forEach(file -> {
+				files.add(file);
+				scanProgress.update(files.size());
+			});
 		}
 		Collections.sort(files);
+		System.out.println("[" + profile.name + "] Scan complete: " + files.size() + " file(s) found");
 		Set<String> includes = extensions(profile.include.isEmpty() ? config.include : profile.include);
 		Set<String> excludes = extensions(profile.exclude.isEmpty() ? config.exclude : profile.exclude);
 		ZoneId zone = ZoneId.of(profile.timezone == null ? config.timezone : profile.timezone);
 		Duration offset = Duration.parse(profile.dateTimeOffset == null ? "PT0S" : profile.dateTimeOffset);
 		Instant cutoff = config.startDate == null ? null : Instant.parse(config.startDate);
+		System.out.println("[" + profile.name + "] Processing " + files.size() + " file(s)");
+		Progress processingProgress = new Progress(profile.name, "Processing", files.size());
 		for(Path source : files)
 		{
 			s.discovered++;
+			processingProgress.update(s.discovered);
 			String relative = Config.normalizeRelative(sourceRoot.relativize(source).toString());
 			String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
 			String extension = extension(source.getFileName().toString()).toLowerCase(Locale.ROOT);
@@ -142,6 +154,7 @@ final class Sorter
 				System.err.println("Copy failed: " + source + " -> " + destination + ": " + e.getMessage());
 			}
 		}
+		System.out.println("[" + profile.name + "] Processing complete: " + s.discovered + " file(s)");
 		return s;
 	}
 
@@ -149,6 +162,38 @@ final class Sorter
 	{
 		if(log != null)
 			log.record(profile, status, source, destination, detail);
+	}
+
+	private static final class Progress
+	{
+		private final String	profile;
+		private final String	phase;
+		private final int	total;
+		private int			lastCount;
+		private long		lastTime = System.currentTimeMillis();
+
+		Progress(String profile, String phase, int total)
+		{
+			this.profile = profile;
+			this.phase = phase;
+			this.total = total;
+		}
+
+		void update(int count)
+		{
+			long now = System.currentTimeMillis();
+			if(count - lastCount < PROGRESS_ITEMS && now - lastTime < PROGRESS_MILLIS)
+				return;
+			if(total < 0)
+				System.out.println("[" + profile + "] " + phase + ": " + count + " file(s) found...");
+			else
+			{
+				double percent = total == 0 ? 100.0 : count * 100.0 / total;
+				System.out.println(String.format(Locale.ROOT, "[%s] %s: %d/%d (%.1f%%)...", profile, phase, count, total, percent));
+			}
+			lastCount = count;
+			lastTime = now;
+		}
 	}
 
 	private Path destination(Config.Profile profile, Path source, Instant instant, ZoneId zone, Set<Path> reserved) throws IOException

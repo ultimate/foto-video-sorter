@@ -96,7 +96,7 @@ Dry run performs scanning, metadata resolution, audit checks, naming, and collis
 
 Every run creates a timestamped `foto-video-sorter-*.log` file beside the audit database. The tab-separated log contains every discovered source, its outcome, and its destination when copied or planned. Dry-run mappings use the `PLANNED` status, making them directly reviewable before a real run.
 
-Each run prints per-profile and total counters. Missing source directories are reported rather than treated as fatal.
+Each run reports profile scan and processing phases, with progress updates every 1,000 files or approximately five seconds during active processing. It then prints per-profile and total counters. Missing source directories are reported rather than treated as fatal.
 
 ## Audit queries
 
