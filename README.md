@@ -64,7 +64,7 @@ Global settings:
 | `include`, `exclude` | Case-insensitive extension lists; dots optional |
 | `dateSources` | Ordered fallbacks: `CAPTURE`, `CREATED`, `MODIFIED` |
 | `timezone` | IANA zone for formatting and zone-less metadata |
-| `startDate` | Optional inclusive ISO-8601 instant |
+| `startDate` | Optional inclusive ISO-8601 filesystem cutoff; files are eligible when created or modified on/after it |
 | `collisionSeparator` | Text before a three-digit collision counter |
 | `database` | Working-directory-relative SQLite filename |
 
@@ -88,7 +88,7 @@ Existing names are never overwritten. With separator `_`, the first collision fo
 
 ## Processing and auditing
 
-Date lookup follows the configured order. Files without any available date, before the cutoff, or rejected by filters are reported but not audited. Files are audited only after a successful copy. Audit identity is profile plus logical source path, size, and last-modified time, so Linux and UNC views share identity while changed sources can be processed again.
+The cutoff is checked first using only filesystem creation and modification timestamps; embedded capture metadata is not read for files rejected by it. A file is eligible when the newer of its creation and modification times is on or after `startDate`. For eligible files, destination date lookup then follows the configured `dateSources` order. Files without any available destination date or rejected by filters are reported but not audited. Files are audited only after a successful copy. Audit identity is profile plus logical source path, size, and last-modified time, so Linux and UNC views share identity while changed sources can be processed again.
 
 Copies are staged beside the destination and finalized atomically when supported. A lock beside the database prevents overlapping runs. SQLite over SMB depends on correct NAS/SMB file locking; do not run cron and interactive invocations concurrently.
 

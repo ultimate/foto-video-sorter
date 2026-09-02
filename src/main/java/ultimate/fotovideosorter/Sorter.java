@@ -96,6 +96,13 @@ final class Sorter
 				continue;
 			}
 			BasicFileAttributes attrs = Files.readAttributes(source, BasicFileAttributes.class);
+			if(cutoff != null && latestFilesystemDate(attrs).isBefore(cutoff))
+			{
+				s.beforeCutoff++;
+				record(profile.name, "BEFORE_CUTOFF", source, null,
+						"created=" + attrs.creationTime().toInstant() + " modified=" + attrs.lastModifiedTime().toInstant());
+				continue;
+			}
 			if(audit.contains(profile.name, logicalSource, attrs.size(), attrs.lastModifiedTime().toMillis()))
 			{
 				s.previouslyProcessed++;
@@ -107,12 +114,6 @@ final class Sorter
 			{
 				s.missingDate++;
 				record(profile.name, "MISSING_DATE", source, null, logicalSource);
-				continue;
-			}
-			if(cutoff != null && date.instant.isBefore(cutoff))
-			{
-				s.beforeCutoff++;
-				record(profile.name, "BEFORE_CUTOFF", source, null, date.instant.toString());
 				continue;
 			}
 			Path destination = destination(profile, source, date.instant, zone, reserved);
@@ -156,6 +157,13 @@ final class Sorter
 		}
 		System.out.println("[" + profile.name + "] Processing complete: " + s.discovered + " file(s)");
 		return s;
+	}
+
+	private static Instant latestFilesystemDate(BasicFileAttributes attrs)
+	{
+		Instant created = attrs.creationTime().toInstant();
+		Instant modified = attrs.lastModifiedTime().toInstant();
+		return created.isAfter(modified) ? created : modified;
 	}
 
 	private void record(String profile, String status, Path source, Path destination, String detail) throws IOException

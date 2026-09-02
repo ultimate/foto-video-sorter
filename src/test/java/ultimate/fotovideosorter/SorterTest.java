@@ -7,8 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -116,6 +117,23 @@ class SorterTest
 		assertEquals(included.toAbsolutePath().normalize().toString(), columns[2]);
 		assertFalse(columns[3].isEmpty());
 		assertTrue(contents.contains("\tFILTERED\t" + filtered.toAbsolutePath().normalize()));
+	}
+
+	@Test
+	void cutoffUsesFilesystemDatesBeforeReadingCaptureMetadata() throws Exception
+	{
+		Fixture f = fixture();
+		f.config.startDate = Instant.now().plusSeconds(3600).toString();
+		f.config.dateSources = Collections.singletonList(Config.DateSource.CAPTURE);
+		Files.write(f.source.resolve("not-really-an-image.jpg"), new byte[] { 1 });
+
+		try (AuditRepository audit = AuditRepository.memory())
+		{
+			Sorter.Summary summary = new Sorter(f.config, f.paths, audit).run(f.config.profiles, true).get(0);
+			assertEquals(1, summary.beforeCutoff);
+			assertEquals(0, summary.missingDate);
+			assertEquals(0, summary.planned);
+		}
 	}
 
 	private Fixture fixture() throws Exception
