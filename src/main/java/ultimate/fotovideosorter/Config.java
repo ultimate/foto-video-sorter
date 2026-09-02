@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
@@ -39,6 +41,9 @@ public final class Config
 	public static Config load(Path file) throws IOException
 	{
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+		// A blank optional profile value in YAML should behave like an omitted value:
+		// retain the profile default, which in turn falls back to the global setting.
+		mapper.configOverride(Profile.class).setSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
 		Config config = mapper.readValue(Files.newInputStream(file), Config.class);
 		config.validate();
 		return config;
@@ -68,6 +73,8 @@ public final class Config
 		}
 		for(Profile p : profiles)
 		{
+			if(p == null)
+				fail("Profiles must not be null");
 			if(p.name == null || p.name.trim().isEmpty() || !names.add(p.name))
 				fail("Profile names must be non-empty and unique");
 			if(p.source == null)
@@ -75,11 +82,23 @@ public final class Config
 			p.source.validate("profile " + p.name + " source");
 			if(p.filenamePattern == null)
 				p.filenamePattern = "*";
+			if(p.suffix == null)
+				p.suffix = "";
+			if(p.dateTimeOffset == null)
+				p.dateTimeOffset = "PT0S";
+			if(p.include == null)
+				p.include = new ArrayList<String>();
+			if(p.exclude == null)
+				p.exclude = new ArrayList<String>();
+			if(p.recursive == null)
+				p.recursive = false;
+			if(p.includeByDefault == null)
+				p.includeByDefault = true;
 			if(!"*".equals(p.filenamePattern))
 				validatePattern(p.filenamePattern, "filenamePattern for " + p.name);
 			if(p.timezone != null)
 				ZoneId.of(p.timezone);
-			Duration.parse(p.dateTimeOffset == null ? "PT0S" : p.dateTimeOffset);
+			Duration.parse(p.dateTimeOffset);
 		}
 		for(String environment : environments.keySet())
 			validateRoots(environment);
@@ -169,8 +188,8 @@ public final class Config
 		public String		dateTimeOffset		= "PT0S";
 		public List<String>	include				= new ArrayList<String>();
 		public List<String>	exclude				= new ArrayList<String>();
-		public boolean		recursive;
-		public boolean		includeByDefault	= true;
+		public Boolean		recursive			= false;
+		public Boolean		includeByDefault	= true;
 	}
 
 	static String normalizeRelative(String value)

@@ -82,6 +82,8 @@ Profile settings:
 | `recursive` | Scan nested source folders |
 | `includeByDefault` | Select with `--profiles all` |
 
+Optional profile settings may be omitted. An omitted or YAML `null` value keeps the profile default; `include`, `exclude`, and `timezone` then use the corresponding global behavior.
+
 Existing names are never overwritten. With separator `_`, the first collision for `photo.jpg` is `photo_001.jpg`.
 
 ## Processing and auditing

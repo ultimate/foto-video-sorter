@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -47,6 +49,36 @@ class ConfigTest
 		c.validate();
 		PathResolver r = new PathResolver(c, "test");
 		assertEquals("imports:camera/a.jpg", r.physicalToLogical(temp.resolve("imports/camera/a.jpg").toString()));
+	}
+
+	@Test
+	void optionalProfileValuesMayBeOmittedOrNull() throws Exception
+	{
+		Path yaml = temp.resolve("config.yaml");
+		String root = temp.toString().replace('\\', '/');
+		String content = "environments:\n"
+				+ "  test:\n"
+				+ "    roots: { imports: \"" + root + "/imports\", photos: \"" + root + "/photos\" }\n"
+				+ "target: { root: photos }\n"
+				+ "include: [jpg]\n"
+				+ "profiles:\n"
+				+ "  - name: camera\n"
+				+ "    source: { root: imports }\n"
+				+ "    include:\n"
+				+ "    exclude: null\n"
+				+ "    timezone:\n"
+				+ "    suffix: null\n"
+				+ "    dateTimeOffset: null\n"
+				+ "    includeByDefault: null\n";
+		Files.write(yaml, content.getBytes(StandardCharsets.UTF_8));
+
+		Config.Profile profile = Config.load(yaml).profiles.get(0);
+		assertEquals(Collections.emptyList(), profile.include);
+		assertEquals(Collections.emptyList(), profile.exclude);
+		assertEquals(null, profile.timezone);
+		assertEquals("", profile.suffix);
+		assertEquals("PT0S", profile.dateTimeOffset);
+		assertEquals(true, profile.includeByDefault);
 	}
 
 	Config base()
