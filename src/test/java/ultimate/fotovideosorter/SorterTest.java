@@ -95,6 +95,29 @@ class SorterTest
 		assertEquals(expected, Sorter.Summary.table(Arrays.asList(camera, export), total));
 	}
 
+	@Test
+	void dryRunLogContainsEveryFileAndPlannedDestination() throws Exception
+	{
+		Fixture f = fixture();
+		Path included = f.source.resolve("photo.jpg");
+		Path filtered = f.source.resolve("notes.txt");
+		Files.write(included, new byte[] { 1 });
+		Files.write(filtered, new byte[] { 2 });
+		Path logFile;
+		try (RunLog log = new RunLog(temp.resolve("logs"), true); AuditRepository audit = AuditRepository.memory())
+		{
+			logFile = log.file();
+			new Sorter(f.config, f.paths, audit, log).run(f.config.profiles, true);
+		}
+
+		String contents = new String(Files.readAllBytes(logFile), StandardCharsets.UTF_8);
+		String planned = Arrays.stream(contents.split("\\R")).filter(line -> line.contains("\tPLANNED\t")).findFirst().get();
+		String[] columns = planned.split("\t", -1);
+		assertEquals(included.toAbsolutePath().normalize().toString(), columns[2]);
+		assertFalse(columns[3].isEmpty());
+		assertTrue(contents.contains("\tFILTERED\t" + filtered.toAbsolutePath().normalize()));
+	}
+
 	private Fixture fixture() throws Exception
 	{
 		Fixture f = new Fixture();

@@ -74,9 +74,12 @@ public final class App implements Runnable
 			load();
 			List<Config.Profile> selected = select(config, profileSelection);
 			Path db = database(), lock = db.resolveSibling(db.getFileName().toString() + ".lock");
-			try (RunLock ignored = new RunLock(lock); AuditRepository repository = dryRun && !java.nio.file.Files.exists(db) ? AuditRepository.memory() : new AuditRepository(db))
+			Path logDirectory = db.toAbsolutePath().normalize().getParent();
+			try (RunLock ignored = new RunLock(lock); RunLog runLog = new RunLog(logDirectory, dryRun);
+					AuditRepository repository = dryRun && !java.nio.file.Files.exists(db) ? AuditRepository.memory() : new AuditRepository(db))
 			{
-				List<Sorter.Summary> summaries = new Sorter(config, new PathResolver(config, environment), repository).run(selected, dryRun);
+				System.out.println("Run log: " + runLog.file());
+				List<Sorter.Summary> summaries = new Sorter(config, new PathResolver(config, environment), repository, runLog).run(selected, dryRun);
 				Sorter.Summary total = new Sorter.Summary("TOTAL");
 				for(Sorter.Summary summary : summaries)
 					total.add(summary);

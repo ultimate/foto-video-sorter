@@ -24,13 +24,20 @@ final class Sorter
 	private final Config			config;
 	private final PathResolver		paths;
 	private final AuditRepository	audit;
+	private final RunLog			log;
 	private final DateResolver		dates	= new DateResolver();
 
 	Sorter(Config config, PathResolver paths, AuditRepository audit)
 	{
+		this(config, paths, audit, null);
+	}
+
+	Sorter(Config config, PathResolver paths, AuditRepository audit, RunLog log)
+	{
 		this.config = config;
 		this.paths = paths;
 		this.audit = audit;
+		this.log = log;
 	}
 
 	List<Summary> run(List<Config.Profile> profiles, boolean dryRun) throws Exception
@@ -49,6 +56,7 @@ final class Sorter
 		if(!Files.isDirectory(sourceRoot))
 		{
 			s.missingSource = 1;
+			record(profile.name, "MISSING_SOURCE", sourceRoot, null, "Source directory does not exist");
 			return s;
 		}
 		final int depth = profile.recursive ? Integer.MAX_VALUE : 1;
@@ -66,35 +74,42 @@ final class Sorter
 		for(Path source : files)
 		{
 			s.discovered++;
+			String relative = Config.normalizeRelative(sourceRoot.relativize(source).toString());
+			String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
 			String extension = extension(source.getFileName().toString()).toLowerCase(Locale.ROOT);
 			if((!includes.isEmpty() && !includes.contains(extension)) || excludes.contains(extension))
 			{
 				s.filtered++;
+				record(profile.name, "FILTERED", source, null, logicalSource);
 				continue;
 			}
 			BasicFileAttributes attrs = Files.readAttributes(source, BasicFileAttributes.class);
-			String relative = Config.normalizeRelative(sourceRoot.relativize(source).toString());
-			String logicalSource = paths.logical(profile.source.root, join(profile.source.path, relative));
 			if(audit.contains(profile.name, logicalSource, attrs.size(), attrs.lastModifiedTime().toMillis()))
 			{
 				s.previouslyProcessed++;
+				record(profile.name, "PREVIOUSLY_PROCESSED", source, null, logicalSource);
 				continue;
 			}
 			DateResolver.Result date = dates.resolve(source, config.dateSources, zone, offset);
 			if(date == null)
 			{
 				s.missingDate++;
+				record(profile.name, "MISSING_DATE", source, null, logicalSource);
 				continue;
 			}
 			if(cutoff != null && date.instant.isBefore(cutoff))
 			{
 				s.beforeCutoff++;
+				record(profile.name, "BEFORE_CUTOFF", source, null, date.instant.toString());
 				continue;
 			}
 			Path destination = destination(profile, source, date.instant, zone, reserved);
 			s.planned++;
 			if(dryRun)
+			{
+				record(profile.name, "PLANNED", source, destination, date.source + " " + date.instant);
 				continue;
+			}
 			try
 			{
 				copyAtomically(source, destination);
@@ -113,18 +128,27 @@ final class Sorter
 				record.dateSource = date.source;
 				audit.insert(record);
 				s.copied++;
+				record(profile.name, "COPIED", source, destination, date.source + " " + date.instant);
 			}
 			catch(java.sql.SQLException e)
 			{
+				record(profile.name, "COPIED_AUDIT_FAILED", source, destination, e.getMessage());
 				throw e;
 			}
 			catch(Exception e)
 			{
 				s.failed++;
+				record(profile.name, "FAILED", source, destination, e.getMessage());
 				System.err.println("Copy failed: " + source + " -> " + destination + ": " + e.getMessage());
 			}
 		}
 		return s;
+	}
+
+	private void record(String profile, String status, Path source, Path destination, String detail) throws IOException
+	{
+		if(log != null)
+			log.record(profile, status, source, destination, detail);
 	}
 
 	private Path destination(Config.Profile profile, Path source, Instant instant, ZoneId zone, Set<Path> reserved) throws IOException

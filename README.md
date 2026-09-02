@@ -94,6 +94,8 @@ Copies are staged beside the destination and finalized atomically when supported
 
 Dry run performs scanning, metadata resolution, audit checks, naming, and collision planning, but does not copy or add audit records. With no existing database it creates none.
 
+Every run creates a timestamped `foto-video-sorter-*.log` file beside the audit database. The tab-separated log contains every discovered source, its outcome, and its destination when copied or planned. Dry-run mappings use the `PLANNED` status, making them directly reviewable before a real run.
+
 Each run prints per-profile and total counters. Missing source directories are reported rather than treated as fatal.
 
 ## Audit queries
