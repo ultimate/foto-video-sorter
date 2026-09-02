@@ -37,3 +37,8 @@ For each folder / profile
 - include filter (multiple values, e.g. "jpg", "mpg")
 - exclude filter (multiple values, e.g. "txt", "srt")
 - include subfolders (true/false)
+
+## TBD
+- use efficient copying when file is copied from one folder of the same network device to another (e.g. run copy command on the remote machine instead of transferring the file content forth and back to the machine running the program)
+- image processing for spherical panorama
+- gps position analysis and location (city, mountain, etc.) lookup to automatically name folders
