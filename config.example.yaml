@@ -1,0 +1,42 @@
+environments:
+  nas:
+    roots:
+      photos: /etc/share/photos
+      imports: /etc/share/imports
+  network:
+    roots:
+      photos: //192.168.0.10/photos
+      imports: //192.168.0.10/imports
+
+target:
+  root: photos
+  path: sorted
+
+folderPattern: yyyy/yyyy.MM.dd
+lowercaseFilename: false
+include: [jpg, jpeg, png, heic, mov, mp4, mpg]
+exclude: [txt, srt]
+dateSources: [CAPTURE, CREATED, MODIFIED]
+timezone: Europe/Zurich
+startDate: 2020-01-01T00:00:00Z
+collisionSeparator: "_"
+database: foto-video-sorter.db
+
+profiles:
+  - name: camera
+    source: { root: imports, path: camera/DCIM }
+    filenamePattern: yyyy.MM.dd HH.mm.ss
+    suffix: ""
+    dateTimeOffset: PT0S
+    include: [jpg, jpeg, mov, mp4]
+    recursive: true
+    includeByDefault: true
+  - name: panoramas
+    source: { root: imports, path: panoramas }
+    filenamePattern: yyyy.MM.dd HH.mm.ss
+    suffix: " Panorama-Teil"
+    timezone: Europe/Zurich
+    dateTimeOffset: PT0S
+    include: [jpg]
+    recursive: false
+    includeByDefault: false

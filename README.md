@@ -1,46 +1,117 @@
 # foto-video-sorter
 
-## Requirements
-- tool in java
-- compatible with java 8 (to be able to run under java version 1.8.0_151)
-- use maven as a build tool and for dependency management 
-- runnable from the command line without ui and via cron
-- configurable via file
-- should scan folders defined in config for newly added files and copy them according to the folder config
-- should keep audit log of files processed to not process them on the next run again, even if target folder was renamed (e.g. if I add a description to the folder name)
-- ignore not existing folders
-- handle collisions by suffixing 001, 002, etc.
-- support dry run for testing
-- use config by parameter
-- allow choosing profile(s) (all or by name)
-- support to set a start date via config and ignore all older files
-- output a summary to the console by profile (e.g. number of new files found, number copied, number ignored, etc.)
+A Java 8 command-line tool that copies photos and videos into date-based folders. It is designed for unattended NAS cron jobs and on-demand runs from another computer using the same YAML configuration and SQLite audit history.
 
-## Config
-What we need...
-Global
-- folder name
-- target folder path (root)
-- folder structure (e.g. "yyyy/yyyy.MM.dd")
-- convert to lower case (true/false)
-- global include filter (multiple values, e.g. "jpg", "mpg")
-- global exclude filter (multiple values, e.g. "txt", "srt")
-- global date filter (file date)
+## Build
 
-For each folder / profile
-- Profile name
-- source folder path
-- date source (e.g "capture date" or "modified date")
-- suffix (e.g. " Panorama-Teil" or "")
-- file name pattern (e.g. "yyyy.MM.dd hh.mm.SS" or "*" (keep original name))
-- optional script to execute
-- date time offset
-- include filter (multiple values, e.g. "jpg", "mpg")
-- exclude filter (multiple values, e.g. "txt", "srt")
-- include subfolders (true/false)
-- include by default when all profiles are run (true/false)
+Java 8 or newer and Maven 3.9+ are required.
 
-## TBD
-- use efficient copying when file is copied from one folder of the same network device to another (e.g. run copy command on the remote machine instead of transferring the file content forth and back to the machine running the program)
-- image processing for spherical panorama
-- gps position analysis and location (city, mountain, etc.) lookup for putting a locations.txt to the folder
+```shell
+mvn clean package
+java -jar target/foto-video-sorter.jar --help
+```
+
+The build produces one executable JAR containing all dependencies.
+
+## Quick start
+
+Keep the JAR, YAML, and audit database in the same NAS directory and change to it before running:
+
+```shell
+java -jar foto-video-sorter.jar run --config config.yaml --environment nas --profiles all --dry-run
+java -jar foto-video-sorter.jar run --config config.yaml --environment nas --profiles all
+```
+
+From Windows, navigate to the same NAS directory and select the network mappings:
+
+```powershell
+Set-Location \\192.168.0.10\tools\foto-video-sorter
+java -jar foto-video-sorter.jar run --config config.yaml --environment network --profiles camera,phone
+```
+
+See [`config.example.yaml`](config.example.yaml) for a complete configuration.
+
+## Paths and environments
+
+`environments` maps stable logical root names to platform-specific absolute paths:
+
+```yaml
+environments:
+  nas:
+    roots:
+      photos: /etc/share/photos
+      imports: /etc/share/imports
+  network:
+    roots:
+      photos: //192.168.0.10/photos
+      imports: //192.168.0.10/imports
+
+target: { root: photos, path: sorted }
+```
+
+Every environment must define every referenced root. Logical paths are relative and use `/` on every platform. Absolute logical paths, unknown roots, and `..` traversal are rejected. Environment mappings accept Linux absolute paths, Windows drive paths, and UNC paths.
+
+The destination is `<target root>/<target path>/<folderPattern>/<filename>`.
+
+## Configuration reference
+
+Global settings:
+
+| Setting | Meaning |
+| --- | --- |
+| `folderPattern` | Java date/time pattern, e.g. `yyyy/yyyy.MM.dd` |
+| `lowercaseFilename` | Lowercase the complete output filename |
+| `include`, `exclude` | Case-insensitive extension lists; dots optional |
+| `dateSources` | Ordered fallbacks: `CAPTURE`, `CREATED`, `MODIFIED` |
+| `timezone` | IANA zone for formatting and zone-less metadata |
+| `startDate` | Optional inclusive ISO-8601 instant |
+| `collisionSeparator` | Text before a three-digit collision counter |
+| `database` | Working-directory-relative SQLite filename |
+
+Profile settings:
+
+| Setting | Meaning |
+| --- | --- |
+| `name` | Unique, stable profile/audit identity |
+| `source` | Logical `root` and relative `path` |
+| `filenamePattern` | Java date/time pattern, or `*` to preserve the stem |
+| `suffix` | Text inserted before the extension |
+| `timezone` | Optional global-zone override |
+| `dateTimeOffset` | ISO-8601 duration, e.g. `PT1H` or `PT-30M` |
+| `include`, `exclude` | Non-empty lists override corresponding global lists |
+| `recursive` | Scan nested source folders |
+| `includeByDefault` | Select with `--profiles all` |
+
+Existing names are never overwritten. With separator `_`, the first collision for `photo.jpg` is `photo_001.jpg`.
+
+## Processing and auditing
+
+Date lookup follows the configured order. Files without any available date, before the cutoff, or rejected by filters are reported but not audited. Files are audited only after a successful copy. Audit identity is profile plus logical source path, size, and last-modified time, so Linux and UNC views share identity while changed sources can be processed again.
+
+Copies are staged beside the destination and finalized atomically when supported. A lock beside the database prevents overlapping runs. SQLite over SMB depends on correct NAS/SMB file locking; do not run cron and interactive invocations concurrently.
+
+Dry run performs scanning, metadata resolution, audit checks, naming, and collision planning, but does not copy or add audit records. With no existing database it creates none.
+
+Each run prints per-profile and total counters. Missing source directories are reported rather than treated as fatal.
+
+## Audit queries
+
+Criteria are exact and combined with AND. Range endpoints are inclusive ISO-8601 instants.
+
+```shell
+java -jar foto-video-sorter.jar audit query --config config.yaml --environment nas --filename IMG_0001.JPG
+java -jar foto-video-sorter.jar audit query --config config.yaml --environment network --source //192.168.0.10/imports/camera/DCIM/IMG_0001.JPG
+java -jar foto-video-sorter.jar audit query --config config.yaml --environment nas --profile camera --processed-from 2026-01-01T00:00:00Z
+```
+
+Paths may be physical or logical values such as `imports:camera/DCIM/IMG_0001.JPG`. Results show logical and observed physical paths, fingerprint, resolved date/source, and processing time.
+
+## Cron
+
+```cron
+15 2 * * * cd /etc/share/tools/foto-video-sorter && /usr/bin/java -jar foto-video-sorter.jar run --config config.yaml --environment nas --profiles all >> sorter-cron.log 2>&1
+```
+
+Remote-host copy optimization, scripts, panorama processing, and GPS/location analysis are deferred beyond v1.
+
+Licensed under MIT.
