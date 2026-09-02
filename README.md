@@ -10,6 +10,8 @@
 - ignore not existing folders
 - handle collisions by suffixing 001, 002, etc.
 - support dry run for testing
+- use config by parameter
+- allow choosing profile(s) (all or by name)
 
 
 ## Config
@@ -22,7 +24,8 @@ Global
 - global include filter (multiple values, e.g. "jpg", "mpg")
 - global exclude filter (multiple values, e.g. "txt", "srt")
 
-For each folder
+For each folder / profile
+- Profile name
 - source folder path
 - date source (e.g "capture date" or "modified date")
 - suffix (e.g. " Panorama-Teil" or "")
@@ -31,3 +34,4 @@ For each folder
 - date time offset
 - include filter (multiple values, e.g. "jpg", "mpg")
 - exclude filter (multiple values, e.g. "txt", "srt")
+- include subfolders (true/false)
