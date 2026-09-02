@@ -6,12 +6,13 @@
 - runnable from the command line without ui and via cron
 - configurable via file
 - should scan folders defined in config for newly added files and copy them according to the folder config
-- should keep record of files processed to not process them on the next run again
+- should keep record of files processed to not process them on the next run again, even if target folder was renamed (e.g. if I add a description to the folder name)
 - ignore not existing folders
 - handle collisions by suffixing 001, 002, etc.
 - support dry run for testing
 - use config by parameter
 - allow choosing profile(s) (all or by name)
+
 
 
 ## Config
