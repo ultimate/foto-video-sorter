@@ -26,4 +26,21 @@ class RunLockTest
 			assertNotNull(recovered);
 		}
 	}
+
+	@Test
+	void releasesLockWhenRunThrows() throws Exception
+	{
+		Path lock = temp.resolve("audit.db.lock");
+		assertThrows(IllegalArgumentException.class, () -> {
+			try (RunLock ignored = new RunLock(lock))
+			{
+				throw new IllegalArgumentException("simulated run failure");
+			}
+		});
+
+		try (RunLock recovered = new RunLock(lock))
+		{
+			assertNotNull(recovered);
+		}
+	}
 }

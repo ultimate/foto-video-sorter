@@ -34,7 +34,15 @@ final class RunLock implements AutoCloseable
 	@Override
 	public void close() throws IOException
 	{
-		lock.release();
-		channel.close();
+		try
+		{
+			lock.release();
+		}
+		finally
+		{
+			// Closing the channel also releases its locks. Always do it even if an
+			// explicit release fails, otherwise this JVM could retain the lock.
+			channel.close();
+		}
 	}
 }
