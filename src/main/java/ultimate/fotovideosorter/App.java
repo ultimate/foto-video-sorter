@@ -78,11 +78,12 @@ public final class App implements Runnable
 			try (RunLock ignored = new RunLock(lock); RunLog runLog = new RunLog(logDirectory, dryRun);
 					AuditRepository repository = dryRun && !java.nio.file.Files.exists(db) ? AuditRepository.memory() : new AuditRepository(db))
 			{
-				System.out.println("Run log: " + runLog.file());
+				ConsoleOutput.info("Run log: " + runLog.file());
 				List<Sorter.Summary> summaries = new Sorter(config, new PathResolver(config, environment), repository, runLog).run(selected, dryRun);
 				Sorter.Summary total = new Sorter.Summary("TOTAL");
 				for(Sorter.Summary summary : summaries)
 					total.add(summary);
+				ConsoleOutput.info("Run summary:");
 				System.out.println(Sorter.Summary.table(summaries, total));
 				return total.failed == 0 ? 0 : 2;
 			}

@@ -57,12 +57,12 @@ final class Sorter
 	{
 		Summary s = new Summary(profile.name);
 		Path sourceRoot = paths.resolve(profile.source);
-		System.out.println("[" + profile.name + "] Scanning " + sourceRoot.toAbsolutePath().normalize());
+		ConsoleOutput.info("[" + profile.name + "] Scanning " + sourceRoot.toAbsolutePath().normalize());
 		if(!Files.isDirectory(sourceRoot))
 		{
 			s.missingSource = 1;
 			record(profile.name, "MISSING_SOURCE", sourceRoot, null, "Source directory does not exist");
-			System.out.println("[" + profile.name + "] Source directory is missing; skipping profile");
+			ConsoleOutput.info("[" + profile.name + "] Source directory is missing; skipping profile");
 			return s;
 		}
 		final int depth = profile.recursive ? Integer.MAX_VALUE : 1;
@@ -92,11 +92,11 @@ final class Sorter
 			}
 		}
 		Collections.sort(files);
-		System.out.println("[" + profile.name + "] Scan complete: " + s.discovered + " file(s) scanned, " + files.size() + " candidate(s) after filters");
+		ConsoleOutput.info("[" + profile.name + "] Scan complete: " + s.discovered + " file(s) scanned, " + files.size() + " candidate(s) after filters");
 		ZoneId zone = ZoneId.of(profile.timezone == null ? config.timezone : profile.timezone);
 		Duration offset = Duration.parse(profile.dateTimeOffset == null ? "PT0S" : profile.dateTimeOffset);
 		Instant cutoff = config.startDate == null ? null : Instant.parse(config.startDate);
-		System.out.println("[" + profile.name + "] Processing " + files.size() + " file(s)");
+		ConsoleOutput.info("[" + profile.name + "] Processing " + files.size() + " file(s)");
 		Progress processingProgress = new Progress(profile.name, "Processing", files.size());
 		for(int fileIndex = 0; fileIndex < files.size(); fileIndex++)
 		{
@@ -161,10 +161,10 @@ final class Sorter
 			{
 				s.failed++;
 				record(profile.name, "FAILED", source, destination, e.getMessage());
-				System.err.println("Copy failed: " + source + " -> " + destination + ": " + e.getMessage());
+				ConsoleOutput.error("Copy failed: " + source + " -> " + destination + ": " + e.getMessage());
 			}
 		}
-		System.out.println("[" + profile.name + "] Processing complete: " + files.size() + " candidate(s)");
+		ConsoleOutput.info("[" + profile.name + "] Processing complete: " + files.size() + " candidate(s)");
 		return s;
 	}
 
@@ -202,11 +202,11 @@ final class Sorter
 			if(count - lastCount < PROGRESS_ITEMS && now - lastTime < PROGRESS_MILLIS)
 				return;
 			if(total < 0)
-				System.out.println("[" + profile + "] " + phase + ": " + count + " file(s) found...");
+				ConsoleOutput.info("[" + profile + "] " + phase + ": " + count + " file(s) found...");
 			else
 			{
 				double percent = total == 0 ? 100.0 : count * 100.0 / total;
-				System.out.println(String.format(Locale.ROOT, "[%s] %s: %d/%d (%.1f%%)...", profile, phase, count, total, percent));
+				ConsoleOutput.info(String.format(Locale.ROOT, "[%s] %s: %d/%d (%.1f%%)...", profile, phase, count, total, percent));
 			}
 			lastCount = count;
 			lastTime = now;
