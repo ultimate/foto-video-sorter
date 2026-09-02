@@ -79,11 +79,8 @@ public final class App implements Runnable
 				List<Sorter.Summary> summaries = new Sorter(config, new PathResolver(config, environment), repository).run(selected, dryRun);
 				Sorter.Summary total = new Sorter.Summary("TOTAL");
 				for(Sorter.Summary summary : summaries)
-				{
-					System.out.println(summary.line());
 					total.add(summary);
-				}
-				System.out.println(total.line());
+				System.out.println(Sorter.Summary.table(summaries, total));
 				return total.failed == 0 ? 0 : 2;
 			}
 		}

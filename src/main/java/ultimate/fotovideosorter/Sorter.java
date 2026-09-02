@@ -225,10 +225,63 @@ final class Sorter
 			profile = p;
 		}
 
-		String line()
+		static String table(List<Summary> summaries, Summary total)
 		{
-			return String.format(Locale.ROOT, "%-20s discovered=%d filtered=%d before-cutoff=%d processed=%d planned=%d copied=%d failed=%d missing-date=%d missing-source=%d", profile, discovered,
-					filtered, beforeCutoff, previouslyProcessed, planned, copied, failed, missingDate, missingSource);
+			String[] headers = { "Profile", "Discovered", "Filtered", "Before cutoff", "Processed", "Planned", "Copied", "Failed", "Missing date", "Missing source" };
+			List<Summary> rows = new ArrayList<Summary>(summaries);
+			rows.add(total);
+			int[] widths = new int[headers.length];
+			for(int i = 0; i < headers.length; i++)
+				widths[i] = headers[i].length();
+			for(Summary row : rows)
+			{
+				String[] values = row.values();
+				for(int i = 0; i < values.length; i++)
+					widths[i] = Math.max(widths[i], values[i].length());
+			}
+
+			String divider = divider(widths);
+			StringBuilder out = new StringBuilder();
+			out.append(divider).append('\n');
+			appendRow(out, headers, widths).append('\n').append(divider).append('\n');
+			for(Summary summary : summaries)
+				appendRow(out, summary.values(), widths).append('\n');
+			out.append(divider).append('\n');
+			appendRow(out, total.values(), widths).append('\n').append(divider);
+			return out.toString();
+		}
+
+		private String[] values()
+		{
+			return new String[] { profile, Integer.toString(discovered), Integer.toString(filtered), Integer.toString(beforeCutoff), Integer.toString(previouslyProcessed), Integer.toString(planned),
+					Integer.toString(copied), Integer.toString(failed), Integer.toString(missingDate), Integer.toString(missingSource) };
+		}
+
+		private static String divider(int[] widths)
+		{
+			StringBuilder line = new StringBuilder("+");
+			for(int width : widths)
+			{
+				for(int i = 0; i < width + 2; i++)
+					line.append('-');
+				line.append('+');
+			}
+			return line.toString();
+		}
+
+		private static StringBuilder appendRow(StringBuilder out, String[] values, int[] widths)
+		{
+			out.append('|');
+			for(int i = 0; i < values.length; i++)
+			{
+				out.append(' ');
+				if(i == 0)
+					out.append(String.format(Locale.ROOT, "%-" + widths[i] + "s", values[i]));
+				else
+					out.append(String.format(Locale.ROOT, "%" + widths[i] + "s", values[i]));
+				out.append(" |");
+			}
+			return out;
 		}
 
 		void add(Summary o)

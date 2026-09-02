@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -67,6 +68,31 @@ class SorterTest
 			assertEquals(2, Files.walk(f.target).filter(Files::isRegularFile).count());
 			assertTrue(Files.walk(f.target).anyMatch(p -> p.getFileName().toString().matches(".* 001\\.jpg")));
 		}
+	}
+
+	@Test
+	void formatsSummariesAsAlignedAsciiTable()
+	{
+		Sorter.Summary camera = new Sorter.Summary("camera");
+		camera.discovered = 6;
+		camera.filtered = 1;
+		camera.beforeCutoff = 5;
+		Sorter.Summary export = new Sorter.Summary("dji-export");
+		export.discovered = 83;
+		export.filtered = 83;
+		Sorter.Summary total = new Sorter.Summary("TOTAL");
+		total.add(camera);
+		total.add(export);
+
+		String expected = "+------------+------------+----------+---------------+-----------+---------+--------+--------+--------------+----------------+\n"
+				+ "| Profile    | Discovered | Filtered | Before cutoff | Processed | Planned | Copied | Failed | Missing date | Missing source |\n"
+				+ "+------------+------------+----------+---------------+-----------+---------+--------+--------+--------------+----------------+\n"
+				+ "| camera     |          6 |        1 |             5 |         0 |       0 |      0 |      0 |            0 |              0 |\n"
+				+ "| dji-export |         83 |       83 |             0 |         0 |       0 |      0 |      0 |            0 |              0 |\n"
+				+ "+------------+------------+----------+---------------+-----------+---------+--------+--------+--------------+----------------+\n"
+				+ "| TOTAL      |         89 |       84 |             5 |         0 |       0 |      0 |      0 |            0 |              0 |\n"
+				+ "+------------+------------+----------+---------------+-----------+---------+--------+--------+--------------+----------------+";
+		assertEquals(expected, Sorter.Summary.table(Arrays.asList(camera, export), total));
 	}
 
 	private Fixture fixture() throws Exception
