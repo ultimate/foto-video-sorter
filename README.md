@@ -62,7 +62,7 @@ Global settings:
 | `folderPattern` | Java date/time pattern, e.g. `yyyy/yyyy.MM.dd` |
 | `lowercaseFilename` | Lowercase the generated/preserved base filename and extension before adding the profile suffix |
 | `include`, `exclude` | Case-insensitive extension or glob lists; dots are optional for extensions |
-| `dateSources` | Ordered fallbacks: `CAPTURE`, `CREATED`, `MODIFIED` |
+| `dateSources` | Ordered fallbacks: `GPS`, `CAPTURE`, `CREATED`, `MODIFIED` |
 | `timezone` | IANA zone for formatting and zone-less metadata |
 | `startDate` | Optional inclusive ISO-8601 filesystem cutoff; files are eligible when created or modified on/after it |
 | `collisionSeparator` | Text before a three-digit collision counter |
@@ -77,7 +77,7 @@ Profile settings:
 | `filenamePattern` | Java date/time pattern, or `*` to preserve the stem |
 | `suffix` | Text inserted before the extension |
 | `timezone` | Optional global-zone override |
-| `dateTimeOffset` | ISO-8601 duration, e.g. `PT1H` or `PT-30M` |
+| `dateTimeOffset` | Camera-clock correction with `y`, `M`, `d`, `h`, `m`, `s`; legacy ISO-8601 durations remain accepted |
 | `include`, `exclude` | Non-empty extension/glob lists override corresponding global lists |
 | `recursive` | Scan nested source folders |
 | `includeByDefault` | Select with `--profiles all` |
@@ -85,6 +85,14 @@ Profile settings:
 Optional profile settings may be omitted. An omitted or YAML `null` value keeps the profile default; `include`, `exclude`, and `timezone` then use the corresponding global behavior.
 
 Profile suffixes preserve their configured capitalization. When `lowercaseFilename` is enabled, lowercasing is applied to the base filename and extension before the suffix is inserted.
+
+Camera-clock corrections use calendar arithmetic in the profile/global timezone and apply only when `CAPTURE` supplies the destination date:
+
+```yaml
+dateTimeOffset: { y: 0, M: 0, d: -1, h: -2, m: -15, s: 0 }
+```
+
+`GPS` reads the UTC GPS timestamp embedded by supported devices. It is the first default source because satellite-derived time is normally more reliable than the camera clock, but it may be missing or contain bad device metadata; explicit `dateSources` ordering remains authoritative. GPS and filesystem dates are never changed by `dateTimeOffset`.
 
 Plain filter entries such as `jpg` or `.mp4` match file extensions. Entries containing glob syntax match filenames and profile-relative paths, case-insensitively. `*` matches within one path segment, `**` crosses folders, and `?` matches one character. For example, `exclude: [".trashed-*", "cache/**"]` excludes trashed filenames anywhere and every file below the relative `cache` folder. Exclude rules take precedence over include rules.
 

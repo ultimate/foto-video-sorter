@@ -16,7 +16,7 @@ folderPattern: yyyy/yyyy.MM.dd
 lowercaseFilename: false
 include: [jpg, jpeg, png, heic, mov, mp4, mpg]
 exclude: [txt, srt]
-dateSources: [CAPTURE, CREATED, MODIFIED]
+dateSources: [GPS, CAPTURE, CREATED, MODIFIED]
 timezone: Europe/Zurich
 startDate: 2020-01-01T00:00:00Z
 collisionSeparator: "_"
@@ -27,7 +27,7 @@ profiles:
     source: { root: imports, path: camera/DCIM }
     filenamePattern: yyyy.MM.dd HH.mm.ss
     suffix: ""
-    dateTimeOffset: PT0S
+    dateTimeOffset: { y: 0, M: 0, d: 0, h: 0, m: 0, s: 0 }
     include: [jpg, jpeg, mov, mp4]
     recursive: true
     includeByDefault: true

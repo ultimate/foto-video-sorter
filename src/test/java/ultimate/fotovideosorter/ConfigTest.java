@@ -8,8 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -124,5 +127,26 @@ class ConfigTest
 		c.profiles = Collections.singletonList(p);
 		
 		assertDoesNotThrow(c::validate);
+	}
+
+	@Test
+	void appliesStructuredCameraClockOffsetUsingCalendarUnits()
+	{
+		Map<String, Integer> offset = new LinkedHashMap<String, Integer>();
+		offset.put("y", 1);
+		offset.put("M", 2);
+		offset.put("d", -1);
+		offset.put("h", 3);
+		offset.put("m", 4);
+		offset.put("s", 5);
+
+		Instant adjusted = DateResolver.applyCameraOffset(Instant.parse("2024-01-15T10:00:00Z"), ZoneId.of("UTC"), offset);
+		assertEquals(Instant.parse("2025-03-14T13:04:05Z"), adjusted);
+	}
+
+	@Test
+	void gpsIsTheFirstDefaultDateSource()
+	{
+		assertEquals(Config.DateSource.GPS, new Config().dateSources.get(0));
 	}
 }

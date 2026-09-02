@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -31,7 +30,7 @@ public final class Config
 	public boolean					lowercaseFilename;
 	public List<String>				include				= new ArrayList<String>();
 	public List<String>				exclude				= new ArrayList<String>();
-	public List<DateSource>			dateSources			= Arrays.asList(DateSource.CAPTURE, DateSource.CREATED, DateSource.MODIFIED);
+	public List<DateSource>			dateSources			= Arrays.asList(DateSource.GPS, DateSource.CAPTURE, DateSource.CREATED, DateSource.MODIFIED);
 	public String					timezone			= "UTC";
 	public String					startDate;
 	public String					collisionSeparator	= "_";
@@ -98,7 +97,7 @@ public final class Config
 				validatePattern(p.filenamePattern, "filenamePattern for " + p.name);
 			if(p.timezone != null)
 				ZoneId.of(p.timezone);
-			Duration.parse(p.dateTimeOffset);
+			DateResolver.validateCameraOffset(p.dateTimeOffset);
 		}
 		for(String environment : environments.keySet())
 			validateRoots(environment);
@@ -135,7 +134,7 @@ public final class Config
 
 	public enum DateSource
 	{
-		CAPTURE, CREATED, MODIFIED
+		GPS, CAPTURE, CREATED, MODIFIED
 	}
 
 	public static final class Environment
@@ -185,7 +184,7 @@ public final class Config
 		public String		filenamePattern		= "*";
 		public String		suffix				= "";
 		public String		timezone;
-		public String		dateTimeOffset		= "PT0S";
+		public Object		dateTimeOffset		= "PT0S";
 		public List<String>	include				= new ArrayList<String>();
 		public List<String>	exclude				= new ArrayList<String>();
 		public Boolean		recursive			= false;

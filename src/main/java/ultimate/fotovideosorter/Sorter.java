@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -94,7 +93,6 @@ final class Sorter
 		Collections.sort(files);
 		ConsoleOutput.info("[" + profile.name + "] Scan complete: " + s.discovered + " file(s) scanned, " + files.size() + " candidate(s) after filters");
 		ZoneId zone = ZoneId.of(profile.timezone == null ? config.timezone : profile.timezone);
-		Duration offset = Duration.parse(profile.dateTimeOffset == null ? "PT0S" : profile.dateTimeOffset);
 		Instant cutoff = config.startDate == null ? null : Instant.parse(config.startDate);
 		ConsoleOutput.info("[" + profile.name + "] Processing " + files.size() + " file(s)");
 		Progress processingProgress = new Progress(profile.name, "Processing", files.size());
@@ -118,7 +116,7 @@ final class Sorter
 				record(profile.name, "PREVIOUSLY_PROCESSED", source, null, logicalSource);
 				continue;
 			}
-			DateResolver.Result date = dates.resolve(source, config.dateSources, zone, offset);
+			DateResolver.Result date = dates.resolve(source, config.dateSources, zone, profile.dateTimeOffset);
 			if(date == null)
 			{
 				s.missingDate++;
