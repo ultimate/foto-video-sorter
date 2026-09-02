@@ -60,7 +60,7 @@ Global settings:
 | Setting | Meaning |
 | --- | --- |
 | `folderPattern` | Java date/time pattern, e.g. `yyyy/yyyy.MM.dd` |
-| `lowercaseFilename` | Lowercase the complete output filename |
+| `lowercaseFilename` | Lowercase the generated/preserved base filename and extension before adding the profile suffix |
 | `include`, `exclude` | Case-insensitive extension or glob lists; dots are optional for extensions |
 | `dateSources` | Ordered fallbacks: `CAPTURE`, `CREATED`, `MODIFIED` |
 | `timezone` | IANA zone for formatting and zone-less metadata |
@@ -83,6 +83,8 @@ Profile settings:
 | `includeByDefault` | Select with `--profiles all` |
 
 Optional profile settings may be omitted. An omitted or YAML `null` value keeps the profile default; `include`, `exclude`, and `timezone` then use the corresponding global behavior.
+
+Profile suffixes preserve their configured capitalization. When `lowercaseFilename` is enabled, lowercasing is applied to the base filename and extension before the suffix is inserted.
 
 Plain filter entries such as `jpg` or `.mp4` match file extensions. Entries containing glob syntax match filenames and profile-relative paths, case-insensitively. `*` matches within one path segment, `**` crosses folders, and `?` matches one character. For example, `exclude: [".trashed-*", "cache/**"]` excludes trashed filenames anywhere and every file below the relative `cache` folder. Exclude rules take precedence over include rules.
 

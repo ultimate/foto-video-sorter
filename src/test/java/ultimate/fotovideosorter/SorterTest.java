@@ -72,6 +72,21 @@ class SorterTest
 	}
 
 	@Test
+	void lowercasesFilenameBeforeAppendingCaseSensitiveSuffix() throws Exception
+	{
+		Fixture f = fixture();
+		f.config.profiles.get(0).suffix = " Panorama-Teil";
+		Files.write(f.source.resolve("PHOTO.JPG"), new byte[] { 1 });
+
+		try (AuditRepository audit = AuditRepository.memory())
+		{
+			new Sorter(f.config, f.paths, audit).run(f.config.profiles, false);
+		}
+
+		assertTrue(Files.walk(f.target).anyMatch(path -> "photo Panorama-Teil.jpg".equals(path.getFileName().toString())));
+	}
+
+	@Test
 	void formatsSummariesAsAlignedAsciiTable()
 	{
 		Sorter.Summary camera = new Sorter.Summary("camera");

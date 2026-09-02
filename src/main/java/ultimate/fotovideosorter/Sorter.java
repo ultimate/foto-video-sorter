@@ -222,9 +222,13 @@ final class Sorter
 			if(!part.isEmpty())
 				base = base.resolve(part);
 		String original = source.getFileName().toString(), ext = extensionWithDot(original), stem = stem(original);
-		String name = ("*".equals(profile.filenamePattern) ? stem : DateTimeFormatter.ofPattern(profile.filenamePattern).format(time)) + (profile.suffix == null ? "" : profile.suffix) + ext;
+		String baseName = "*".equals(profile.filenamePattern) ? stem : DateTimeFormatter.ofPattern(profile.filenamePattern).format(time);
 		if(config.lowercaseFilename)
-			name = name.toLowerCase(Locale.ROOT);
+		{
+			baseName = baseName.toLowerCase(Locale.ROOT);
+			ext = ext.toLowerCase(Locale.ROOT);
+		}
+		String name = baseName + (profile.suffix == null ? "" : profile.suffix) + ext;
 		Path candidate = base.resolve(name), normalized = candidate.toAbsolutePath().normalize();
 		int counter = 1;
 		while(Files.exists(candidate) || reserved.contains(normalized))
