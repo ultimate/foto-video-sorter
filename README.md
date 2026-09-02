@@ -6,14 +6,14 @@
 - runnable from the command line without ui and via cron
 - configurable via file
 - should scan folders defined in config for newly added files and copy them according to the folder config
-- should keep record of files processed to not process them on the next run again, even if target folder was renamed (e.g. if I add a description to the folder name)
+- should keep audit log of files processed to not process them on the next run again, even if target folder was renamed (e.g. if I add a description to the folder name)
 - ignore not existing folders
 - handle collisions by suffixing 001, 002, etc.
 - support dry run for testing
 - use config by parameter
 - allow choosing profile(s) (all or by name)
-
-
+- support to set a start date via config and ignore all older files
+- output a summary to the console by profile (e.g. number of new files found, number copied, number ignored, etc.)
 
 ## Config
 What we need...
@@ -24,6 +24,7 @@ Global
 - convert to lower case (true/false)
 - global include filter (multiple values, e.g. "jpg", "mpg")
 - global exclude filter (multiple values, e.g. "txt", "srt")
+- global date filter (file date)
 
 For each folder / profile
 - Profile name
